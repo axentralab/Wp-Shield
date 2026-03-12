@@ -245,7 +245,8 @@ export default function WpShieldTool() {
 
   async function handleScan(e: React.FormEvent) {
     e.preventDefault()
-    if (!url || scanning) return
+    const cleanUrl = url.trim()
+    if (!cleanUrl || scanning) return
 
     setScanning(true)
     setResult(null)
@@ -258,8 +259,18 @@ export default function WpShieldTool() {
       setStepIdx((i) => Math.min(i + 1, SCAN_STEPS.length - 1))
     }, 600)
 
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 20000)
     try {
-      const res = await fetch(`/api/scan?url=${encodeURIComponent(url)}`)
+      const res = await fetch(`/api/scan?url=${encodeURIComponent(cleanUrl)}`, {
+        cache: "no-store", signal: controller.signal,
+      })
+      clearTimeout(timeout)
+
+      if (!res.ok) {
+        throw new Error("Scan request failed")
+      }
+
       const data: ScanReport = await res.json()
       clearInterval(stepInterval)
 
@@ -404,8 +415,8 @@ function ScanResultPanel({ report, scannedUrl }: { report: ScanReport; scannedUr
                   {variant === 'success'
                     ? <CheckCircle2 className="w-3 h-3" />
                     : variant === 'danger'
-                    ? <XCircle className="w-3 h-3" />
-                    : <AlertTriangle className="w-3 h-3" />}
+                      ? <XCircle className="w-3 h-3" />
+                      : <AlertTriangle className="w-3 h-3" />}
                   {statusLabel(key, val)}
                 </Badge>
               </div>
